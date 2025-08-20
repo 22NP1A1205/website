@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Modern Calculator</title>
+  <style>
+    :root{
+      --bg: #0f172a;          /* slate-900 */
+      --panel: #111827;       /* gray-900 */
+      --key: #1f2937;         /* gray-800 */
+      --key-hover:#374151;    /* gray-700 */
+      --op:#2563eb;           /* blue-600 */
+      --op-hover:#1d4ed8;     /* blue-700 */
+      --acc:#10b981;          /* emerald-500 */
+      --text:#e5e7eb;         /* gray-200 */
+      --muted:#9ca3af;        /* gray-400 */
+      --danger:#ef4444;       /* red-500 */
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    .light{
+      --bg:#f3f4f6;          /* gray-100 */
+      --panel:#ffffff;        /* white */
+      --key:#f9fafb;          /* gray-50 */
+      --key-hover:#e5e7eb;    /* gray-200 */
+      --op:#2563eb;           /* blue-600 */
+      --op-hover:#1d4ed8;     /* blue-700 */
+      --acc:#059669;          /* emerald-600 */
+      --text:#111827;         /* gray-900 */
+      --muted:#6b7280;        /* gray-500 */
+      --danger:#dc2626;       /* red-600 */
+      --shadow: 0 12px 35px rgba(0,0,0,.12);
+    }
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Cantarell, Noto Sans, Ubuntu, Helvetica, Arial;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .wrap{
+      min-height:100%;
+      display:grid;
+      place-items:center;
+      padding:24px;
+    }
+    .app{
+      width: min(900px, 92vw);
+      display:grid;
+      grid-template-columns: 1fr 320px;
+      gap:18px;
+    }
+    @media (max-width: 860px){
+      .app{grid-template-columns: 1fr}
+      .history{order:2}
+    }
+    .calc{
+      background: var(--panel);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+      display:grid;
+      grid-template-rows: auto auto 1fr;
+      gap:14px;
+    }
+    .topbar{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+    }
+    .brand{font-weight:700;letter-spacing:.3px}
+    .theme-toggle{
+      border:none;background:var(--key);color:var(--text);padding:10px 12px;border-radius:12px;cursor:pointer;
+    }
+    .theme-toggle:hover{background:var(--key-hover)}
+
+    .display{
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.04));
+      border-radius:16px;
+      padding: 14px 16px;
+      min-height: 94px;
+      display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-end;
+      gap:6px;
+      word-break: break-all;
+    }
+    .expression{font-size:14px;color:var(--muted);min-height:18px}
+    .result{font-size:40px;font-weight:700;line-height:1}
+
+    .keys{display:grid;gap:10px;grid-template-columns: repeat(4, 1fr)}
+    button.key{
+      border:none;cursor:pointer;border-radius:14px;padding:16px;font-size:18px;font-weight:600;background:var(--key);color:var(--text);
+      transition: transform .05s ease, background .15s ease;
+    }
+    button.key:hover{background:var(--key-hover)}
+    button.key:active{transform: translateY(1px)}
+    .op{background: var(--op)}
+    .op:hover{background:var(--op-hover)}
+    .eq{background: var(--acc)}
+    .eq:hover{filter: brightness(0.95)}
+    .danger{background: var(--danger)}
+    .span-2{grid-column: span 2}
+
+    .history{
+      background: var(--panel);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+      display:flex;flex-direction:column;gap:10px;max-height: 600px;overflow:auto;
+    }
+    .history h3{margin:0 0 6px 0;font-size:16px}
+    .hist-item{
+      display:flex;justify-content:space-between;gap:10px;align-items:flex-end;background:var(--key);padding:10px;border-radius:12px;
+    }
+    .hist-exp{font-size:12px;color:var(--muted)}
+    .hist-res{font-weight:700}
+    .hist-empty{color:var(--muted);text-align:center;padding:16px}
+
+    .toolbar{display:flex;gap:8px;align-items:center}
+    .tool{background:var(--key);border:none;border-radius:12px;padding:8px 10px;color:var(--text);cursor:pointer}
+    .tool:hover{background:var(--key-hover)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="app" id="app">
+      <section class="calc" aria-label="Calculator">
+        <div class="topbar">
+          <div class="brand">🧮 Modern Calculator</div>
+          <div class="toolbar">
+            <button class="tool" id="copyResult" title="Copy result">Copy</button>
+            <button class="tool" id="toggleTheme" title="Toggle theme">Theme</button>
+          </div>
+        </div>
+        <div class="display" role="status" aria-live="polite">
+          <div class="expression" id="expression"></div>
+          <div class="result" id="result">0</div>
+        </div>
+        <div class="keys" role="group" aria-label="Calculator keys">
+          <button class="key danger" data-action="clear-all">AC</button>
+          <button class="key" data-action="backspace">⌫</button>
+          <button class="key" data-action="percent">%</button>
+          <button class="key op" data-value="/">÷</button>
+
+          <button class="key" data-value="7">7</button>
+          <button class="key" data-value="8">8</button>
+          <button class="key" data-value="9">9</button>
+          <button class="key op" data-value="*">×</button>
+
+          <button class="key" data-value="4">4</button>
+          <button class="key" data-value="5">5</button>
+          <button class="key" data-value="6">6</button>
+          <button class="key op" data-value="-">−</button>
+
+          <button class="key" data-value="1">1</button>
+          <button class="key" data-value="2">2</button>
+          <button class="key" data-value="3">3</button>
+          <button class="key op" data-value="+">+</button>
+
+          <button class="key" data-action="toggle-sign">±</button>
+          <button class="key span-2" data-value="0">0</button>
+          <button class="key" data-value=".">.</button>
+          <button class="key eq span-2" data-action="equals">=</button>
+        </div>
+        <small style="color:var(--muted)">Tip: use keyboard — numbers, + − × ÷, Enter, Backspace, and % work.</small>
+      </section>
+
+      <aside class="history" aria-label="Calculation history">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <h3>History</h3>
+          <div class="toolbar">
+            <button class="tool" id="clearHistory" title="Clear history">Clear</button>
+          </div>
+        </div>
+        <div id="historyList" class="hist-empty">No calculations yet</div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const resultEl = document.getElementById('result');
+      const exprEl = document.getElementById('expression');
+      const historyList = document.getElementById('historyList');
+      const themeBtn = document.getElementById('toggleTheme');
+      const copyBtn = document.getElementById('copyResult');
+      const clearHistoryBtn = document.getElementById('clearHistory');
+
+      let expression = '';
+      let justEvaluated = false;
+      let history = JSON.parse(localStorage.getItem('calc_history')||'[]');
+      let prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+      const savedTheme = localStorage.getItem('calc_theme');
+      if(savedTheme){ document.documentElement.classList.toggle('light', savedTheme === 'light'); }
+      else { document.documentElement.classList.toggle('light', prefersLight); }
+
+      function sanitize(input){
+        // allow digits, operators, parentheses, decimal, whitespace
+        return input.replace(/[^0-9+\-*/%.() ]/g, '');
+      }
+
+      function formatNumber(n){
+        if(!isFinite(n)) return 'Error';
+        // limit length but keep precision
+        const s = Number(n).toString();
+        if (s.includes('e')) return s; // scientific notation
+        return Math.abs(n) > 999999999 ? n.toExponential(6) : Number(n.toFixed(12)).toString();
+      }
+
+      function updateDisplay(){
+        exprEl.textContent = expression || '\u00A0';
+        resultEl.textContent = currentEntry() || '0';
+      }
+
+      function currentEntry(){
+        // last number segment after an operator
+        const m = expression.match(/([\d.]+)(?!.*[\d.])/);
+        return m ? m[0] : (expression.endsWith(')') ? '' : '');
+      }
+
+      function addToHistory(exp, res){
+        if(!isFinite(res)) return;
+        history.unshift({exp, res});
+        history = history.slice(0, 12);
+        localStorage.setItem('calc_history', JSON.stringify(history));
+        renderHistory();
+      }
+
+      function renderHistory(){
+        if(!history.length){
+          historyList.className = 'hist-empty';
+          historyList.textContent = 'No calculations yet';
+          return;
+        }
+        historyList.className = '';
+        historyList.innerHTML = '';
+        history.forEach((h, idx)=>{
+          const item = document.createElement('div');
+          item.className = 'hist-item';
+          item.innerHTML = `<div>
+            <div class="hist-exp">${h.exp}</div>
+            <div class="hist-res">${h.res}</div>
+          </div>
+          <button class="tool" title="Use result" data-idx="${idx}">Use</button>`;
+          item.querySelector('button').addEventListener('click', ()=>{
+            expression = h.res;
+            justEvaluated = false;
+            updateDisplay();
+          });
+          historyList.appendChild(item);
+        });
+      }
+
+      function inputValue(v){
+        if(justEvaluated && /[0-9.]/.test(v)){
+          // start new number after equals if digit pressed
+          expression = '';
+        }
+        justEvaluated = false;
+        // prevent duplicate decimals in current number
+        if(v === '.'){
+          const parts = expression.split(/([+\-*/%()])/);
+          const last = parts[parts.length-1] || '';
+          if(last.includes('.')) return;
+        }
+        // replace leading operator misuse
+        if(expression === '' && /[+*/%]/.test(v)) return;
+        // avoid two operators in a row (except negative sign)
+        if(/[+\-*/%]$/.test(expression) && /[+*/%]/.test(v)){
+          expression = expression.slice(0,-1) + v; // replace operator
+        } else {
+          expression += v;
+        }
+        updateDisplay();
+      }
+
+      function clearAll(){ expression=''; justEvaluated=false; updateDisplay(); }
+      function backspace(){ if(expression){ expression = expression.slice(0,-1); updateDisplay(); } }
+      function toggleSign(){
+        // wrap last number in (-(x)) or remove if already negative
+        const r = /(\d*\.?\d+)(?!.*\d)/; // last number
+        if(!r.test(expression)) return;
+        expression = expression.replace(r, (m)=>{
+          // if already wrapped like (-number)
+          if(expression.includes(`(-${m})`)) return m; // skip double wrap
+          return `(-${m})`;
+        });
+        updateDisplay();
+      }
+      function percent(){
+        // convert last number to percent of previous value if applicable, else divide by 100
+        const r = /(\d*\.?\d+)(?!.*\d)/;
+        const prevOp = expression.match(/[+\-*/](?=[^+\-*/]*$)/);
+        if(!r.test(expression)) return;
+        expression = expression.replace(r, (m)=>{
+          if(prevOp){
+            // percent of the value before the last operator
+            try{
+              const baseExpr = sanitize(expression.split(/[+\-*/](?=[^+\-*/]*$)/)[0]);
+              const base = Function(`"use strict";return(${baseExpr})`)();
+              return (Number(base) * Number(m) / 100).toString();
+            }catch{ return (Number(m)/100).toString(); }
+          }
+          return (Number(m)/100).toString();
+        });
+        updateDisplay();
+      }
+
+      function evaluateExpr(){
+        if(!expression) return;
+        const clean = sanitize(expression);
+        try{
+          const res = Function('"use strict"; return (' + clean + ')')();
+          const formatted = formatNumber(res);
+          addToHistory(clean, formatted);
+          resultEl.textContent = formatted;
+          exprEl.textContent = clean + ' =';
+          expression = String(formatted);
+          justEvaluated = true;
+        } catch(e){
+          resultEl.textContent = 'Error';
+        }
+      }
+
+      // Button events
+      document.querySelectorAll('button.key').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const val = btn.getAttribute('data-value');
+          const action = btn.getAttribute('data-action');
+          if(action === 'clear-all') return clearAll();
+          if(action === 'backspace') return backspace();
+          if(action === 'toggle-sign') return toggleSign();
+          if(action === 'percent') return percent();
+          if(action === 'equals') return evaluateExpr();
+          if(val) return inputValue(val);
+        })
+      });
+
+      // Keyboard support
+      window.addEventListener('keydown', (e)=>{
+        const k = e.key;
+        if(/^[0-9]$/.test(k)) return inputValue(k);
+        if(['+','-','*','/','.','%','(',')'].includes(k)) return inputValue(k);
+        if(k === 'Enter' || k === '='){ e.preventDefault(); return evaluateExpr(); }
+        if(k === 'Backspace'){ return backspace(); }
+        if(k.toLowerCase() === 'c' && (e.ctrlKey || e.metaKey)){
+          navigator.clipboard.writeText(resultEl.textContent);
+          return;
+        }
+        if(k.toLowerCase() === 'a' && (e.ctrlKey || e.metaKey)){
+          clearAll(); return;
+        }
+      });
+
+      // Theme toggle & copy
+      themeBtn.addEventListener('click', ()=>{
+        document.documentElement.classList.toggle('light');
+        const mode = document.documentElement.classList.contains('light') ? 'light':'dark';
+        localStorage.setItem('calc_theme', mode);
+      });
+      copyBtn.addEventListener('click', ()=>{
+        navigator.clipboard.writeText(resultEl.textContent);
+        copyBtn.textContent = 'Copied!';
+        setTimeout(()=>copyBtn.textContent='Copy', 900);
+      });
+
+      clearHistoryBtn.addEventListener('click', ()=>{
+        history = [];
+        localStorage.removeItem('calc_history');
+        renderHistory();
+      })
+
+      renderHistory();
+      updateDisplay();
+    })();
+  </script>
+</body>
+</html>
